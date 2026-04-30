@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import iTabPager
 
 final class LerpTests: XCTestCase {
@@ -16,5 +17,22 @@ final class LerpTests: XCTestCase {
     }
     func test_lerp_reverseDirection() {
         XCTAssertEqual(lerp(10, 0, 0.3), 7, accuracy: 0.001)
+    }
+}
+
+final class SelectionValidationTests: XCTestCase {
+    func test_validSelection_returnsItself() {
+        let result = TabPager<Int, EmptyView>.validatedSelection(2, in: [1, 2, 3])
+        XCTAssertEqual(result, 2)
+    }
+
+    func test_invalidSelection_returnsFirstTab() {
+        let result = TabPager<Int, EmptyView>.validatedSelection(99, in: [1, 2, 3])
+        XCTAssertEqual(result, 1)
+    }
+
+    func test_emptyTabs_returnsNil() {
+        let result = TabPager<Int, EmptyView>.validatedSelection(1, in: [])
+        XCTAssertNil(result)
     }
 }

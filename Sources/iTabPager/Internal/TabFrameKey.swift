@@ -2,7 +2,7 @@
 import SwiftUI
 
 struct TabFrameKey: PreferenceKey {
-    static var defaultValue: [AnyHashable: CGRect] = [:]
+    nonisolated(unsafe) static var defaultValue: [AnyHashable: CGRect] = [:]
     static func reduce(
         value: inout [AnyHashable: CGRect],
         nextValue: () -> [AnyHashable: CGRect]

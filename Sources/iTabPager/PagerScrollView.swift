@@ -65,6 +65,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
     private var hostingControllers: [Int: UIHostingController<AnyView>] = [:]
     private(set) var isUserScrolling = false
     private var isResizing = false
+    private var pendingTargetIndex: Int? = nil
 
     // MARK: Init
 
@@ -131,21 +132,29 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         updateContentSize()
         updateAllPageFrames()
 
+        let targetIndex = clampedIndex(for: selectionBinding.wrappedValue)
+        let targetX = CGFloat(targetIndex) * scrollView.bounds.width
+
         if !isUserScrolling {
-            let index = clampedIndex(for: selectionBinding.wrappedValue)
-            let targetX = CGFloat(index) * scrollView.bounds.width
-            if abs(scrollView.contentOffset.x - targetX) > 1 {
+            if abs(scrollView.contentOffset.x - targetX) > 1 && pendingTargetIndex != targetIndex {
+                pendingTargetIndex = targetIndex
                 scrollView.setContentOffset(CGPoint(x: targetX, y: 0), animated: true)
             }
         }
 
-        updateVisiblePages()
+        // 用实际 offset 是否到达目标来判断是否在滚动——不依赖标志位，
+        // 对动画被打断导致 pendingTargetIndex 提前清除的情况免疫。
+        let notAtTarget = abs(scrollView.contentOffset.x - targetX) > 1
+        if !isUserScrolling && !scrollView.isDecelerating && !notAtTarget {
+            updateVisiblePages()
+        }
     }
 
     // MARK: UIScrollViewDelegate
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         isUserScrolling = true
+        pendingTargetIndex = nil
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
@@ -168,10 +177,19 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         isUserScrolling = false
         snapSelection()
+        updateVisiblePages()
     }
 
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         isUserScrolling = false
+        // 只有真正到达当前目标才清除：UIKit 在打断动画时也会触发此回调，
+        // 若此时 offset 尚未到位，说明新动画仍在运行，不能清除 pendingTargetIndex。
+        let currentIndex = clampedIndex(for: selectionBinding.wrappedValue)
+        let targetX = CGFloat(currentIndex) * scrollView.bounds.width
+        if abs(scrollView.contentOffset.x - targetX) <= 1 {
+            pendingTargetIndex = nil
+        }
+        updateVisiblePages()
     }
 
     // MARK: Private

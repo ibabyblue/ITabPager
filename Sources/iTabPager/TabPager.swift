@@ -131,18 +131,25 @@ extension TabPager {
 
     @ViewBuilder
     private func tabButton(_ tab: Tab) -> some View {
-        let selected = selection == tab
+        let index = tabs.firstIndex(of: tab) ?? 0
+        // 滑动过程中从 progress 连续插值选中权重：当前 tab 正好对齐时为 1，偏移 1 页后为 0
+        let fraction = max(0.0, 1.0 - abs(progress - CGFloat(index)))
         ZStack {
             // 占位用 selectedFont，保持 tab 宽度在选中/未选中时一致
             Text(tabTitle(tab))
                 .font(style.selectedFont)
                 .hidden()
+            // 未选中底层
             Text(tabTitle(tab))
-                .font(selected ? style.selectedFont : style.unselectedFont)
-                .foregroundStyle(selected ? style.selectedColor : style.unselectedColor)
-                .animation(nil, value: selection)
+                .font(style.unselectedFont)
+                .foregroundStyle(style.unselectedColor)
+            // 选中层，随 fraction 淡入
+            Text(tabTitle(tab))
+                .font(style.selectedFont)
+                .foregroundStyle(style.selectedColor)
+                .opacity(fraction)
         }
-        .padding(.bottom, style.indicatorSpacing)
+        .padding(.bottom, style.indicatorHeight + style.indicatorSpacing)
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.spring(duration: 0.25)) { selection = tab }

@@ -17,6 +17,14 @@ In Xcode choose **File → Add Package Dependencies**, enter the repository URL,
 ```swift
 dependencies: [
     .package(url: "https://github.com/ibabyblue/iTabPager", from: "0.0.1")
+],
+targets: [
+    .target(
+        name: "YourTarget",
+        dependencies: [
+            .product(name: "iTabPager", package: "iTabPager")
+        ]
+    )
 ]
 ```
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct iTabPagerDemoApp: App {
+struct ITabPagerDemoApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

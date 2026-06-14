@@ -1,3 +1,11 @@
+//
+//  ITabPagerTests.swift
+//  ITabPagerTests
+//
+//  Created by ibabyblue on 2026/04/30.
+//  Copyright © 2026 ibabyblue. All rights reserved.
+//
+
 import XCTest
 import SwiftUI
 @testable import ITabPager

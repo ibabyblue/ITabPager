@@ -1,3 +1,11 @@
+//
+//  ContentView.swift
+//  ITabPagerDemo
+//
+//  Created by ibabyblue on 2026/05/08.
+//  Copyright © 2026 ibabyblue. All rights reserved.
+//
+
 import SwiftUI
 
 struct ContentView: View {
@@ -14,7 +22,7 @@ struct ContentView: View {
                     CustomStyleDemo()
                 }
             }
-            .navigationTitle("iTabPager")
+            .navigationTitle("ITabPager")
         }
     }
 }

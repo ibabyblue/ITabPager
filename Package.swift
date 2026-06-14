@@ -1,4 +1,12 @@
 // swift-tools-version: 6.2
+//
+//  Package.swift
+//  ITabPager
+//
+//  Created by ibabyblue on 2026/04/30.
+//  Copyright © 2026 ibabyblue. All rights reserved.
+//
+
 import PackageDescription
 
 let package = Package(

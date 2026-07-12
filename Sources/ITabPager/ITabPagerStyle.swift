@@ -19,6 +19,8 @@ public struct ITabPagerStyle {
     public var indicatorHeight: CGFloat = 3
     public var indicatorSpacing: CGFloat = 0
     public var tabSpacing: CGFloat     = 20
+    public var showsTabStripEdgeFade: Bool = false
+    public var tabStripEdgeFadeWidth: CGFloat = 44
 
     public init() {}
 }

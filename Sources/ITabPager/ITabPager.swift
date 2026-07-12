@@ -26,6 +26,7 @@ public struct ITabPager<Tab: Hashable, Content: View>: View {
 
     @State private var progress: CGFloat = 0
     @State private var tabFrames: [AnyHashable: CGRect] = [:]
+    @State private var tabViewportFrames: [AnyHashable: CGRect] = [:]
     @State private var containerWidth: CGFloat = 0
     @State private var isInitialized = false
 
@@ -115,19 +116,32 @@ extension ITabPager {
                 }
                 .onAppear {
                     Task { @MainActor in
-                        proxy.scrollTo(selection, anchor: initialScrollAnchor)
+                        proxy.scrollTo(selection, anchor: selectedTabScrollAnchor())
                     }
                 }
                 .onChange(of: selection) { _, newValue in
                     Task { @MainActor in
                         withAnimation(.spring(duration: 0.25)) {
-                            proxy.scrollTo(newValue, anchor: .center)
+                            proxy.scrollTo(newValue, anchor: selectedTabScrollAnchor())
                         }
                     }
                 }
             }
         }
         .defaultScrollAnchor(initialScrollAnchor)
+        .coordinateSpace(name: "tabPagerScrollViewport")
+        .compositingGroup()
+        .mask {
+            if style.showsTabStripEdgeFade {
+                tabStripFadeMask
+            } else {
+                Rectangle()
+                    .fill(.black)
+            }
+        }
+        .onPreferenceChange(TabViewportFrameKey.self) { frames in
+            tabViewportFrames = frames
+        }
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -135,6 +149,58 @@ extension ITabPager {
                     .onChange(of: geo.size.width) { _, w in containerWidth = w }
             }
         )
+    }
+
+    private var tabViewportBounds: CGRect {
+        guard let firstFrame = tabViewportFrames.values.first else { return .zero }
+        return tabViewportFrames.values.dropFirst().reduce(firstFrame) { bounds, frame in
+            bounds.union(frame)
+        }
+    }
+
+    private var isTabStripOverflowing: Bool {
+        containerWidth > 0 && tabViewportBounds.width > containerWidth + 1
+    }
+
+    private var showsLeadingFade: Bool {
+        isTabStripOverflowing && tabViewportBounds.minX < -1
+    }
+
+    private var showsTrailingFade: Bool {
+        isTabStripOverflowing && tabViewportBounds.maxX > containerWidth + 1
+    }
+
+    private var tabStripFadeMask: some View {
+        GeometryReader { geo in
+            let fadeWidth = min(style.tabStripEdgeFadeWidth, max(0, geo.size.width / 2))
+            HStack(spacing: 0) {
+                tabStripFadeEdge(isLeading: true, isVisible: showsLeadingFade)
+                    .frame(width: fadeWidth)
+                Rectangle()
+                    .fill(.black)
+                tabStripFadeEdge(isLeading: false, isVisible: showsTrailingFade)
+                    .frame(width: fadeWidth)
+            }
+            .transaction { transaction in
+                transaction.animation = nil
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tabStripFadeEdge(isLeading: Bool, isVisible: Bool) -> some View {
+        if isVisible {
+            LinearGradient(
+                colors: isLeading
+                    ? [.clear, .black.opacity(0.7), .black]
+                    : [.black, .black.opacity(0.7), .clear],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        } else {
+            Rectangle()
+                .fill(.black)
+        }
     }
 
     @ViewBuilder
@@ -164,10 +230,15 @@ extension ITabPager {
         }
         .background(
             GeometryReader { geo in
-                Color.clear.preference(
-                    key: TabFrameKey.self,
-                    value: [AnyHashable(tab): geo.frame(in: .named("tabPagerStrip"))]
-                )
+                Color.clear
+                    .preference(
+                        key: TabFrameKey.self,
+                        value: [AnyHashable(tab): geo.frame(in: .named("tabPagerStrip"))]
+                    )
+                    .preference(
+                        key: TabViewportFrameKey.self,
+                        value: [AnyHashable(tab): geo.frame(in: .named("tabPagerScrollViewport"))]
+                    )
             }
         )
     }

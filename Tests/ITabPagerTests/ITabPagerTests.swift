@@ -44,3 +44,28 @@ final class SelectionValidationTests: XCTestCase {
         XCTAssertNil(result)
     }
 }
+
+final class TabStripScrollAnchorTests: XCTestCase {
+    func test_selectedTabScrollAnchor_isCentered() {
+        XCTAssertEqual(selectedTabScrollAnchor(), .center)
+    }
+}
+
+final class ITabPagerStyleTests: XCTestCase {
+    func test_tabStripEdgeFadeDefaultsToOffWithStandardWidth() {
+        let style = ITabPagerStyle()
+
+        XCTAssertFalse(style.showsTabStripEdgeFade)
+        XCTAssertEqual(style.tabStripEdgeFadeWidth, 44)
+    }
+
+    func test_tabStripEdgeFadeCanBeConfigured() {
+        var style = ITabPagerStyle()
+
+        style.showsTabStripEdgeFade = true
+        style.tabStripEdgeFadeWidth = 32
+
+        XCTAssertTrue(style.showsTabStripEdgeFade)
+        XCTAssertEqual(style.tabStripEdgeFadeWidth, 32)
+    }
+}

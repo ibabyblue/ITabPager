@@ -6,7 +6,15 @@
 //  Copyright © 2026 ibabyblue. All rights reserved.
 //
 
-// Pure Swift — no UIKit dependency, testable on macOS host
+#if canImport(UIKit)
+import SwiftUI
+
+// Pure helpers — no direct UIKit dependency, testable in the package suite
 func validatedSelection<Tab: Hashable>(_ selection: Tab, in tabs: [Tab]) -> Tab? {
     tabs.contains(selection) ? selection : tabs.first
 }
+
+func selectedTabScrollAnchor() -> UnitPoint {
+    .center
+}
+#endif

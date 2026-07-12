@@ -13,10 +13,17 @@ struct OverflowTabDemo: View {
     let tabs = ["关注", "推荐", "热榜", "游戏", "影视", "音乐", "体育", "科技", "财经", "汽车", "美食", "旅游", "时尚", "健康", "教育"]
     @State private var selection = "推荐"
 
+    private var style: ITabPagerStyle {
+        var style = ITabPagerStyle()
+        style.showsTabStripEdgeFade = true
+        return style
+    }
+
     var body: some View {
         ITabPager(
             tabs: tabs,
             selection: $selection,
+            style: style,
             content: { tab in
                 List(0..<40, id: \.self) { i in
                     HStack {

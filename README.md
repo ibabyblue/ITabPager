@@ -11,6 +11,7 @@ A tab-strip pager component for iOS 17+. UIScrollView paging core, SwiftUI publi
 
 - **Real-time indicator** — interpolates position and width between tab frames driven by `scrollViewDidScroll`, no delay, fully finger-tracking
 - **Overflow tab strip** — horizontally scrollable tab bar; tapping a tab auto-centers it within the strip
+- **Optional edge fade** — overflow tab strips can fade tab labels out at the left and right edges with configurable width
 - **Lazy page loading** — only the current page and its immediate neighbors are kept in memory
 - **Customizable style** — fonts, colors, indicator size, spacing all configurable via `ITabPagerStyle`
 - **SwiftUI-native public API** — zero UIKit exposure to callers, zero third-party dependencies
@@ -84,6 +85,8 @@ var style: ITabPagerStyle {
     s.indicatorHeight     = 2
     s.indicatorSpacing    = 4
     s.tabSpacing          = 24
+    s.showsTabStripEdgeFade = true
+    s.tabStripEdgeFadeWidth = 44
     return s
 }
 
@@ -127,6 +130,8 @@ public struct ITabPagerStyle {
     public var indicatorHeight: CGFloat   // default: 3
     public var indicatorSpacing: CGFloat  // default: 0
     public var tabSpacing: CGFloat        // default: 20
+    public var showsTabStripEdgeFade: Bool   // default: false
+    public var tabStripEdgeFadeWidth: CGFloat // default: 44
 }
 ```
 
@@ -139,6 +144,8 @@ public struct ITabPagerStyle {
 | `indicatorHeight` | Indicator bar height in points |
 | `indicatorSpacing` | Gap between the tab label bottom and the indicator bar |
 | `tabSpacing` | Horizontal spacing between tab labels |
+| `showsTabStripEdgeFade` | Enables left/right fixed-width fade masks for overflow tab strips |
+| `tabStripEdgeFadeWidth` | Width of each edge fade mask in points |
 
 ## Edge-Case Behavior
 
@@ -149,13 +156,14 @@ public struct ITabPagerStyle {
 | `selection` not in `tabs` | Corrected to `tabs.first` automatically |
 | `tabs` replaced at runtime | Pages reload; selection snaps to nearest valid tab |
 | Rapid tab taps | Each tap interrupts the previous animation and starts a new one immediately |
+| Initially selected overflow tab | Centered in the tab strip using the same positioning behavior as later selection changes |
 
 ## Demo
 
 Open `demo/ITabPagerDemo.xcodeproj`, select a simulator and run. Covers three scenarios:
 
 - **Basic** — three-tab pager with a plain list
-- **Overflow** — fifteen tabs that overflow the strip; auto-scrolls to keep the selected tab visible
+- **Overflow** — fifteen tabs that overflow the strip; auto-scrolls to keep the selected tab visible and demonstrates configurable edge fade
 - **Custom Style** — custom fonts, colors, and indicator appearance; center-aligned tabs
 
 ## Design Notes

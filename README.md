@@ -32,7 +32,7 @@ In Xcode choose **File → Add Package Dependencies**, enter the repository URL,
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ibabyblue/ITabPager", from: "0.0.4")
+    .package(url: "https://github.com/ibabyblue/ITabPager", from: "0.1.0")
 ],
 targets: [
     .target(

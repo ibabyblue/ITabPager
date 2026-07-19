@@ -1,185 +1,110 @@
 # ITabPager
 
-A tab-strip pager component for iOS 17+. UIScrollView paging core, SwiftUI public API, zero third-party dependencies.
+ITabPager is an iOS SwiftUI tab-strip pager with UIKit paging, finger-tracking indicator interpolation, overflow-title centering, optional edge fades, and lazy current-neighbor page hosting.
 
 ![iOS 17+](https://img.shields.io/badge/iOS-17%2B-blue)
 ![Swift 6.2](https://img.shields.io/badge/Swift-6.2%2B-orange)
 ![SPM](https://img.shields.io/badge/SPM-compatible-brightgreen)
+![Version](https://img.shields.io/badge/version-0.2.0-blueviolet)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ## Features
 
-- **Real-time indicator** — interpolates position and width between tab frames driven by `scrollViewDidScroll`, no delay, fully finger-tracking
-- **Overflow tab strip** — horizontally scrollable tab bar; tapping a tab auto-centers it within the strip
-- **Optional edge fade** — overflow tab strips can fade tab labels out at the left and right edges with configurable width
-- **Lazy page loading** — only the current page and its immediate neighbors are kept in memory
-- **Customizable style** — fonts, colors, indicator size, spacing all configurable via `ITabPagerStyle`
-- **SwiftUI-native public API** — zero UIKit exposure to callers, zero third-party dependencies
+- Continuous title cross-fade and indicator position/width interpolation while paging
+- A horizontally scrollable tab strip that centers the selected title
+- Optional leading and trailing fades shown only where overflow content is clipped
+- Caller-owned, binding-driven selection for taps, swipes, and programmatic navigation
+- Lazy UIKit hosting for the current page and its immediate neighbors
+- Forwarding of color scheme, Dynamic Type size, and locale to hosted pages
+- Configurable fonts, colors, indicator geometry, tab spacing, and fitted-strip alignment
+- No third-party Package dependencies
 
 ## Requirements
 
-| | Minimum |
-|---|---|
+| Requirement | Minimum |
+|---|---:|
 | iOS | 17.0 |
 | Swift | 6.2 |
-| Xcode | 16.3 |
+| Xcode | 26.0 |
 
 ## Installation
 
-### Swift Package Manager
-
-In Xcode choose **File → Add Package Dependencies**, enter the repository URL, or add to `Package.swift` directly:
+Add ITabPager with Swift Package Manager:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ibabyblue/ITabPager", from: "0.1.0")
-],
-targets: [
-    .target(
-        name: "YourTarget",
-        dependencies: [
-            .product(name: "ITabPager", package: "ITabPager")
-        ]
-    )
+    .package(url: "https://github.com/ibabyblue/ITabPager.git", from: "0.2.0")
 ]
+```
+
+Then add the library product to your target:
+
+```swift
+.product(name: "ITabPager", package: "ITabPager")
 ```
 
 ## Quick Start
 
 ```swift
 import ITabPager
+import SwiftUI
 
-enum Tab: String, CaseIterable {
+enum FeedTab: String, CaseIterable, Hashable {
     case recommended = "Recommended"
-    case hot         = "Hot"
-    case latest      = "Latest"
+    case popular = "Popular"
+    case latest = "Latest"
 }
 
-struct ContentView: View {
-    @State private var selection: Tab = .recommended
+struct FeedView: View {
+    @State private var selection: FeedTab = .recommended
 
     var body: some View {
         ITabPager(
-            tabs: Tab.allCases,
-            selection: $selection,
-            content: { tab in
-                List(0..<30, id: \.self) { i in
-                    Text("\(tab.rawValue) · \(i + 1)")
-                }
-                .listStyle(.plain)
-            },
-            tabTitle: { $0.rawValue }
-        )
+            tabs: FeedTab.allCases,
+            selection: $selection
+        ) { tab in
+            List(1...30, id: \.self) { row in
+                Text("\(tab.rawValue) item \(row)")
+            }
+            .listStyle(.plain)
+        } tabTitle: { tab in
+            tab.rawValue
+        }
     }
 }
 ```
 
-## Custom Style
+Use stable, unique `Hashable` tab identities. The binding remains application-owned: taps and completed page gestures update it, and application writes animate the pager to the matching page.
 
-```swift
-var style: ITabPagerStyle {
-    var s = ITabPagerStyle()
-    s.selectedColor       = .orange
-    s.indicatorColor      = .orange
-    s.indicatorWidthRatio = 0.6
-    s.indicatorHeight     = 2
-    s.indicatorSpacing    = 4
-    s.tabSpacing          = 24
-    s.showsTabStripEdgeFade = true
-    s.tabStripEdgeFadeWidth = 44
-    return s
-}
+## Behavior at a Glance
 
-ITabPager(
-    tabs: tabs,
-    selection: $selection,
-    alignment: .center,
-    style: style,
-    content: { tab in MyPageView(tab: tab) },
-    tabTitle: { tab in tab.title }
-)
-```
-
-## API Reference
-
-### ITabPager
-
-```swift
-public struct ITabPager<Tab: Hashable, Content: View>: View {
-    public init(
-        tabs: [Tab],
-        selection: Binding<Tab>,
-        alignment: HorizontalAlignment = .leading,
-        style: ITabPagerStyle = .init(),
-        @ViewBuilder content: @escaping (Tab) -> Content,
-        tabTitle: @escaping (Tab) -> String
-    )
-}
-```
-
-### ITabPagerStyle
-
-```swift
-public struct ITabPagerStyle {
-    public var selectedFont: Font         // default: .system(size: 17, weight: .bold)
-    public var unselectedFont: Font       // default: .system(size: 17, weight: .regular)
-    public var selectedColor: Color       // default: .primary
-    public var unselectedColor: Color     // default: .secondary
-    public var indicatorColor: Color      // default: .primary
-    public var indicatorWidthRatio: CGFloat  // default: 0.5
-    public var indicatorHeight: CGFloat   // default: 3
-    public var indicatorSpacing: CGFloat  // default: 0
-    public var tabSpacing: CGFloat        // default: 20
-    public var showsTabStripEdgeFade: Bool   // default: false
-    public var tabStripEdgeFadeWidth: CGFloat // default: 44
-}
-```
-
-| Property | Description |
+| Situation | Behavior |
 |---|---|
-| `selectedFont` / `unselectedFont` | Tab label fonts |
-| `selectedColor` / `unselectedColor` | Tab label colors |
-| `indicatorColor` | Indicator bar color |
-| `indicatorWidthRatio` | Indicator width as a fraction of the tab label width |
-| `indicatorHeight` | Indicator bar height in points |
-| `indicatorSpacing` | Gap between the tab label bottom and the indicator bar |
-| `tabSpacing` | Horizontal spacing between tab labels |
-| `showsTabStripEdgeFade` | Enables left/right fixed-width fade masks for overflow tab strips |
-| `tabStripEdgeFadeWidth` | Width of each edge fade mask in points |
+| `tabs` is empty | Presents no strip or page content |
+| One tab | Presents one page and disables horizontal paging |
+| Valid selection | Preserved by identity while the supplied collection remains compatible |
+| A newly assigned invalid selection | Corrected to the first tab when the selection observer runs |
+| Initially invalid or unchanged selection after replacing tabs | The pager displays the first valid page, but callers should keep the binding valid |
+| User paging | Publishes continuous fractional progress, then commits the nearest tab identity |
+| Programmatic selection | Animates to the target and avoids restarting the same pending animation |
+| Hosted pages | Retains the current page and its immediate neighbors |
+| Overflow title strip | Centers selection; optional fades appear only at clipped edges |
 
-## Edge-Case Behavior
+## Documentation
 
-| Scenario | Behavior |
-|---|---|
-| `tabs` is empty | Renders nothing, no crash |
-| `tabs.count == 1` | Paging disabled, single page shown |
-| `selection` not in `tabs` | Corrected to `tabs.first` automatically |
-| `tabs` replaced at runtime | Pages reload; selection snaps to nearest valid tab |
-| Rapid tab taps | Each tap interrupts the previous animation and starts a new one immediately |
-| Initially selected overflow tab | Centered in the tab strip using the same positioning behavior as later selection changes |
+- [DocC catalog](Sources/ITabPager/ITabPager.docc/ITabPager.md) — selection, interpolation, overflow, styling, navigation, and lifecycle guides
+- [Example application](Example/README.md) — four runnable integration scenarios and test instructions
+- [Changelog](CHANGELOG.md) — release history and compatibility notes
+- Generated API reference is available by building the ITabPager DocC catalog in Xcode.
 
-## Demo
+## Example
 
-Open `demo/ITabPagerDemo.xcodeproj`, select a simulator and run. Covers three scenarios:
+Open `Example/ITabPagerDemo.xcodeproj`, select the shared `ITabPagerDemo` scheme, and run an iOS simulator. Regenerate the project after structural changes:
 
-- **Basic** — three-tab pager with a plain list
-- **Overflow** — fifteen tabs that overflow the strip; auto-scrolls to keep the selected tab visible and demonstrates configurable edge fade
-- **Custom Style** — custom fonts, colors, and indicator appearance; center-aligned tabs
-
-## Design Notes
-
-- Core: `UIScrollView` with `isPagingEnabled = true` wrapped in `UIViewControllerRepresentable`. Each page is a `UIHostingController`; only the current page and its immediate neighbors are kept in memory.
-- Tab colors and fonts cross-fade continuously with scroll progress — the selected layer fades in as the adjacent page scrolls into view, matching the indicator in real time.
-- The indicator interpolates position and width between neighboring tab frames, driven by `scrollViewDidScroll`, producing smooth finger-tracking animation.
-- Programmatic tab switches use `setContentOffset(animated:)`. A `pendingTargetIndex` guard prevents redundant animation restarts from the SwiftUI re-render loop; the guard is cleared only when the scroll view physically reaches the target offset.
-- The public API is entirely SwiftUI; callers have no exposure to UIKit.
-
-## Out of Scope
-
-- Vertical tab strips
-- Drag-to-reorder tabs
-- macOS / tvOS / watchOS
+```bash
+xcodegen generate --spec Example/project.yml --project Example
+```
 
 ## License
 
-ITabPager is available under the MIT license. See the [LICENSE](LICENSE) file for details.
+ITabPager is available under the MIT license. See [LICENSE](LICENSE).

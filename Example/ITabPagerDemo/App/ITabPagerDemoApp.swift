@@ -8,8 +8,10 @@
 
 import SwiftUI
 
+/// The runnable ITabPager integration example application.
 @main
 struct ITabPagerDemoApp: App {
+    /// The main application window containing the scenario catalog.
     var body: some Scene {
         WindowGroup {
             ContentView()

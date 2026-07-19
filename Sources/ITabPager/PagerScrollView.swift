@@ -12,17 +12,29 @@ import UIKit
 
 // MARK: - PagerScrollView
 
+/// A SwiftUI representable that hosts paged content in a UIKit scroll-view controller.
 struct PagerScrollView<Tab: Hashable, Content: View>: UIViewControllerRepresentable {
 
+    /// The ordered tab identities represented by pages.
     let tabs: [Tab]
+    /// The caller-owned selected tab binding.
     @Binding var selection: Tab
+    /// The fractional page index written by scroll-view progress updates.
     @Binding var progress: CGFloat
+    /// The SwiftUI builder used to create hosted page content.
     let content: (Tab) -> Content
 
+    /// The current SwiftUI color scheme forwarded to hosted roots.
     @Environment(\.colorScheme) private var colorScheme
+    /// The current Dynamic Type size forwarded to hosted roots.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The current locale forwarded to hosted roots.
     @Environment(\.locale) private var locale
 
+    /// Creates the UIKit paging controller used by the representable.
+    ///
+    /// - Parameter context: The current representable context.
+    /// - Returns: A paging controller initialized with the current bindings and builder.
     func makeUIViewController(context: Context) -> PagerViewController<Tab, Content> {
         PagerViewController(
             tabs: tabs,
@@ -32,6 +44,11 @@ struct PagerScrollView<Tab: Hashable, Content: View>: UIViewControllerRepresenta
         )
     }
 
+    /// Reconciles SwiftUI inputs and environment values with the existing paging controller.
+    ///
+    /// - Parameters:
+    ///   - vc: The controller previously created by ``makeUIViewController(context:)``.
+    ///   - context: The current representable context.
     func updateUIViewController(_ vc: PagerViewController<Tab, Content>, context: Context) {
         vc.update(
             tabs: tabs,
@@ -47,10 +64,12 @@ struct PagerScrollView<Tab: Hashable, Content: View>: UIViewControllerRepresenta
 
 // MARK: - PagerViewController
 
+/// A paging controller that keeps only the current page and adjacent pages hosted.
 final class PagerViewController<Tab: Hashable, Content: View>: UIViewController, UIScrollViewDelegate {
 
     // MARK: Properties
 
+    /// The paging scroll view owned by the controller.
     private let scrollView: UIScrollView = {
         let sv = UIScrollView()
         sv.isPagingEnabled = true
@@ -62,21 +81,39 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         return sv
     }()
 
+    /// The current ordered tab identities.
     private var tabs: [Tab]
+    /// The current caller-owned selection binding.
     private var selectionBinding: Binding<Tab>
+    /// The binding that receives fractional page progress.
     private var progressBinding: Binding<CGFloat>
+    /// The current SwiftUI page-content builder.
     private var content: (Tab) -> Content
+    /// The color scheme applied to hosted SwiftUI roots.
     private var colorScheme: ColorScheme = .light
+    /// The Dynamic Type size applied to hosted SwiftUI roots.
     private var dynamicTypeSize: DynamicTypeSize = .large
+    /// The locale applied to hosted SwiftUI roots.
     private var locale: Locale = .current
 
+    /// Hosted pages keyed by their current integer page index.
     private var hostingControllers: [Int: UIHostingController<AnyView>] = [:]
+    /// Whether a user drag or deceleration currently owns the scroll position.
     private(set) var isUserScrolling = false
+    /// Whether layout is synchronously adjusting content offset after a size change.
     private var isResizing = false
+    /// The programmatic target whose animated scroll should not be restarted by SwiftUI updates.
     private var pendingTargetIndex: Int? = nil
 
     // MARK: Init
 
+    /// Creates a paging controller from the initial tab data, bindings, and content builder.
+    ///
+    /// - Parameters:
+    ///   - tabs: The ordered identities represented by pages.
+    ///   - selectionBinding: The caller-owned selected-tab binding.
+    ///   - progressBinding: The binding that receives fractional page progress.
+    ///   - content: The SwiftUI builder used to create page roots.
     init(
         tabs: [Tab],
         selectionBinding: Binding<Tab>,
@@ -90,10 +127,15 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         super.init(nibName: nil, bundle: nil)
     }
 
+    /// Storyboard and archive construction are unsupported for this programmatic controller.
+    ///
+    /// - Parameter coder: The decoder supplied by UIKit.
+    /// - Returns: This initializer always terminates instead of returning an instance.
     required init?(coder: NSCoder) { fatalError() }
 
     // MARK: Lifecycle
 
+    /// Installs the paging scroll view and connects its delegate.
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
@@ -101,6 +143,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         view.addSubview(scrollView)
     }
 
+    /// Sizes the scroll view and hosted pages, preserving the selected page across layout changes.
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         let bounds = view.bounds
@@ -119,6 +162,19 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
 
     // MARK: Public Update
 
+    /// Reconciles tabs, bindings, content, and SwiftUI environment values.
+    ///
+    /// Programmatic selection changes animate to the target unless a user gesture owns scrolling
+    /// or the same target is already pending. Visible pages refresh after the target is reached.
+    ///
+    /// - Parameters:
+    ///   - tabs: The current ordered tab identities.
+    ///   - selectionBinding: The current caller-owned selected-tab binding.
+    ///   - progressBinding: The current fractional-progress binding.
+    ///   - content: The current page-content builder.
+    ///   - colorScheme: The color scheme forwarded to hosted content.
+    ///   - dynamicTypeSize: The Dynamic Type size forwarded to hosted content.
+    ///   - locale: The locale forwarded to hosted content.
     func update(
         tabs: [Tab],
         selectionBinding: Binding<Tab>,
@@ -150,8 +206,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
             }
         }
 
-        // 用实际 offset 是否到达目标来判断是否在滚动——不依赖标志位，
-        // 对动画被打断导致 pendingTargetIndex 提前清除的情况免疫。
+        // Compare the physical offset so interrupted animations cannot clear a pending target early.
         let notAtTarget = abs(scrollView.contentOffset.x - targetX) > 1
         if !isUserScrolling && !scrollView.isDecelerating && !notAtTarget {
             updateVisiblePages()
@@ -160,11 +215,19 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
 
     // MARK: UIScrollViewDelegate
 
+    /// Marks the start of user-controlled paging and cancels programmatic target suppression.
+    ///
+    /// - Parameter scrollView: The paging scroll view beginning its drag.
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         isUserScrolling = true
         pendingTargetIndex = nil
     }
 
+    /// Commits selection immediately when a drag ends without deceleration.
+    ///
+    /// - Parameters:
+    ///   - scrollView: The paging scroll view ending its drag.
+    ///   - decelerate: Whether UIKit will continue scrolling after the drag.
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         if !decelerate {
             isUserScrolling = false
@@ -172,6 +235,9 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         }
     }
 
+    /// Publishes fractional page progress and maintains the current-neighbor hosting window.
+    ///
+    /// - Parameter scrollView: The paging scroll view whose content offset changed.
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard !isResizing else { return }
         let pageWidth = scrollView.bounds.width
@@ -182,16 +248,24 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         loadUnloadPages()
     }
 
+    /// Commits the nearest page after deceleration and refreshes the hosting window.
+    ///
+    /// - Parameter scrollView: The paging scroll view that stopped decelerating.
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         isUserScrolling = false
         snapSelection()
         updateVisiblePages()
     }
 
+    /// Clears a programmatic target only after UIKit physically reaches the current selection.
+    ///
+    /// UIKit can deliver this callback for an interrupted animation, so an offset outside the
+    /// tolerance leaves the newer target pending.
+    ///
+    /// - Parameter scrollView: The paging scroll view whose animation ended or was interrupted.
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         isUserScrolling = false
-        // 只有真正到达当前目标才清除：UIKit 在打断动画时也会触发此回调，
-        // 若此时 offset 尚未到位，说明新动画仍在运行，不能清除 pendingTargetIndex。
+        // An interrupted callback must not clear a newer animation that has not reached its target.
         let currentIndex = clampedIndex(for: selectionBinding.wrappedValue)
         let targetX = CGFloat(currentIndex) * scrollView.bounds.width
         if abs(scrollView.contentOffset.x - targetX) <= 1 {
@@ -202,6 +276,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
 
     // MARK: Private
 
+    /// Updates the scrollable content size from the current page count and viewport bounds.
     private func updateContentSize() {
         let pageWidth = scrollView.bounds.width
         scrollView.contentSize = CGSize(
@@ -210,6 +285,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         )
     }
 
+    /// Repositions every currently hosted page after a viewport-size change.
     private func updateAllPageFrames() {
         let pageWidth = scrollView.bounds.width
         let pageHeight = scrollView.bounds.height
@@ -223,6 +299,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         }
     }
 
+    /// Loads missing pages and unloads pages outside the current-plus-neighbor window while scrolling.
     private func loadUnloadPages() {
         let pageWidth = scrollView.bounds.width
         guard pageWidth > 0, !tabs.isEmpty else { return }
@@ -232,7 +309,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         let hi = min(tabs.count - 1, currentIndex + 1)
         let pageHeight = scrollView.bounds.height
 
-        // Unload out-of-window pages
+        // Unload pages outside the current-neighbor window.
         for index in Array(hostingControllers.keys) where index < lo || index > hi {
             let vc = hostingControllers[index]!
             vc.willMove(toParent: nil)
@@ -241,7 +318,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
             hostingControllers.removeValue(forKey: index)
         }
 
-        // Load new pages (with current environment — they'll be refreshed in update())
+        // Load new pages with the latest forwarded environment.
         for index in lo...hi where hostingControllers[index] == nil {
             let tab = tabs[index]
             let rootView = AnyView(
@@ -260,6 +337,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         }
     }
 
+    /// Rebuilds or creates every page in the current-plus-neighbor window.
     private func updateVisiblePages() {
         let pageWidth = scrollView.bounds.width
         guard pageWidth > 0, !tabs.isEmpty else { return }
@@ -270,7 +348,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         let hi = min(tabs.count - 1, currentIndex + 1)
         let pageHeight = scrollView.bounds.height
 
-        // Unload out-of-window pages
+        // Unload pages outside the current-neighbor window.
         for index in Array(hostingControllers.keys) where index < lo || index > hi {
             let vc = hostingControllers[index]!
             vc.willMove(toParent: nil)
@@ -279,7 +357,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
             hostingControllers.removeValue(forKey: index)
         }
 
-        // Load or update pages in window
+        // Load or update pages inside the window.
         for index in lo...hi {
             let tab = tabs[index]
             let rootView = AnyView(
@@ -303,6 +381,7 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         }
     }
 
+    /// Rounds the physical offset to a page and writes its identity into the selection binding.
     private func snapSelection() {
         let pageWidth = scrollView.bounds.width
         guard pageWidth > 0 else { return }
@@ -311,6 +390,10 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
         selectionBinding.wrappedValue = tabs[index]
     }
 
+    /// Resolves a tab identity to an index that is valid for the current page collection.
+    ///
+    /// - Parameter tab: The candidate tab identity.
+    /// - Returns: Its index when present, or the first valid index when absent.
     private func clampedIndex(for tab: Tab) -> Int {
         (tabs.firstIndex(of: tab) ?? 0).clamped(to: 0...(max(0, tabs.count - 1)))
     }
@@ -318,7 +401,12 @@ final class PagerViewController<Tab: Hashable, Content: View>: UIViewController,
 
 // MARK: - Comparable clamped helper
 
+/// Closed-range clamping used by page-index and scroll-position calculations.
 private extension Comparable {
+    /// Limits this value to the supplied closed range.
+    ///
+    /// - Parameter range: The inclusive lower and upper bounds.
+    /// - Returns: This value when in range, otherwise the nearest bound.
     func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
     }
